@@ -63,15 +63,13 @@ def bcp47_variants():
 
 @lru_cache()
 def gettext(lang_code, locale="en"):
-    country_trans = country_gettext(locale)
     lang_trans = language_gettext(locale)
     bcp47langs = bcp47_langs()
-    bcp47regions = bcp47_regions()
-    bcp47variants = bcp47_variants()
     if "-" not in lang_code:
-        if lang_code in bcp47langs:
-            return lang_trans(bcp47langs[lang_code])
-        return lang_code
+        return (
+            lang_trans(bcp47langs[lang_code])
+            if lang_code in bcp47langs
+            else lang_code)
     try:
         _lang = bcp47(lang_code)
     except BCP47Exception:
@@ -82,11 +80,14 @@ def gettext(lang_code, locale="en"):
     # localize the output string ?
 
     if _lang.variant:
+        bcp47variants = bcp47_variants()
         return (
             "%s (%s)"
             % (name,
                bcp47variants[_lang.variant]))
     if _lang.region:
+        country_trans = country_gettext(locale)
+        bcp47regions = bcp47_regions()
         return (
             "%s (%s)"
             % (name,
