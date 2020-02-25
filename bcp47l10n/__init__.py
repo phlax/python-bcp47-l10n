@@ -5,7 +5,7 @@ from functools import lru_cache
 import gettext as _gettext
 import pycountry
 
-from bcp47 import bcp47
+from bcp47 import bcp47, BCP47Exception
 
 
 @lru_cache()
@@ -74,7 +74,7 @@ def gettext(lang_code, locale="en"):
         return lang_code
     try:
         _lang = bcp47(lang_code)
-    except Exception:
+    except BCP47Exception:
         return lang_code
     name = lang_trans(bcp47langs[_lang.language])
 
