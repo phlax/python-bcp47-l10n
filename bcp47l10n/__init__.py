@@ -1,26 +1,40 @@
 
+import os
 from functools import lru_cache
 
-import gettext
+import gettext as _gettext
 import pycountry
 
 from bcp47 import bcp47
 
 
 @lru_cache()
-def country_gettext(language_code):
-    return gettext.translation(
-        'iso3166',
-        pycountry.LOCALES_DIR,
-        languages=[language_code])
+def supported_locales():
+    return {
+        x.replace("_", "-").replace("@", "-"): x
+        for x in os.listdir(pycountry.LOCALES_DIR)}
 
 
 @lru_cache()
-def language_gettext(language_code):
-    return gettext.translation(
+def country_gettext(locale):
+    supported = supported_locales()
+    if locale == "en" or locale not in supported:
+        return lambda x: x
+    return _gettext.translation(
+        'iso3166',
+        pycountry.LOCALES_DIR,
+        languages=[supported[locale]]).gettext
+
+
+@lru_cache()
+def language_gettext(locale):
+    supported = supported_locales()
+    if locale == "en" or locale not in supported:
+        return lambda x: x
+    return _gettext.translation(
         'iso639-3',
         pycountry.LOCALES_DIR,
-        languages=[language_code])
+        languages=[supported[locale]]).gettext
 
 
 @lru_cache()
@@ -48,21 +62,25 @@ def bcp47_variants():
 
 
 @lru_cache()
-def bcp47_trans(lang, locale="en"):
+def gettext(lang_code, locale="en"):
     country_trans = country_gettext(locale)
     lang_trans = language_gettext(locale)
     bcp47langs = bcp47_langs()
     bcp47regions = bcp47_regions()
     bcp47variants = bcp47_variants()
-    if "-" not in lang:
-        if lang in bcp47langs:
-            return lang_trans.gettext(bcp47langs[lang])
-        return lang
+    if "-" not in lang_code:
+        if lang_code in bcp47langs:
+            return lang_trans(bcp47langs[lang_code])
+        return lang_code
     try:
-        _lang = bcp47(lang)
+        _lang = bcp47(lang_code)
     except Exception:
-        return lang
-    name = lang_trans.gettext(bcp47langs[_lang.language])
+        return lang_code
+    name = lang_trans(bcp47langs[_lang.language])
+
+    # handle grandfathereds ?
+    # localize the output string ?
+
     if _lang.variant:
         return (
             "%s (%s)"
@@ -72,4 +90,4 @@ def bcp47_trans(lang, locale="en"):
         return (
             "%s (%s)"
             % (name,
-               country_trans.gettext(bcp47regions[_lang.region])))
+               country_trans(bcp47regions[_lang.region])))
